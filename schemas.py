@@ -30,6 +30,24 @@ class RecipeResponse(RecipeBase):
     class Config:
         from_attributes = True
 
+class KukingCategoryResponse(BaseModel):
+    id_category: int
+    category_name: str
+
+    class Config:
+        from_attributes = True
+
+
+class KukingReceptResponse(BaseModel):
+    id_recepts: int
+    recept_name: str
+    recept_sostav: str | None = None
+    recept_instuction: str
+    podcategory: str
+    recept_category: int
+
+    class Config:
+        from_attributes = True
 
 class FavoriteResponse(BaseModel):
     id: int

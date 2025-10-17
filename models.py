@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, BigInteger
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -42,3 +42,20 @@ class Favorite(Base):
 
     user = relationship("User", back_populates="favorites")
     recipe = relationship("Recipe", back_populates="favorited_by")
+
+class KukingCategory(Base):
+    __tablename__ = "kuking_category"
+
+    id_category = Column(BigInteger, primary_key=True, index=True)
+    category_name = Column(String(45), nullable=False)
+
+
+class KukingRecept(Base):
+    __tablename__ = "kuking_recepts"
+
+    id_recepts = Column(BigInteger, primary_key=True, index=True)
+    recept_category = Column(BigInteger, ForeignKey("kuking_category.id_category"), nullable=False)
+    podcategory = Column(String(100), default="разное")
+    recept_name = Column(String(100), nullable=False)
+    recept_sostav = Column(Text)
+    recept_instuction = Column(Text, nullable=False)
