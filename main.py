@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 import models, schemas, crud
 from database import engine, get_db, Base
 import os
-from sqlalchemy import text
+from sqlalchemy import text, inspect
 
 load_dotenv()
 print("✅ FastAPI загружается...")
@@ -32,34 +32,59 @@ BASE_DIR = os.path.dirname(__file__)  # директория, где лежит 
 TABLES_FILE = os.path.join(BASE_DIR, "sql", "tables.sql")
 INSERTS_FILE = os.path.join(BASE_DIR, "sql", "inserts.sql")
 
-def execute_sql_file(filename):
-    """Выполняет SQL команды из файла через SQLAlchemy"""
+
+def execute_sql_file(filename, conn):
     with open(filename, "r", encoding="utf-8") as f:
         sql_content = f.read()
 
-    # Разбиваем на отдельные команды по ;
-    statements = [stmt.strip() for stmt in sql_content.split(";") if stmt.strip()]
+    statements = []
+    current = []
+    for line in sql_content.splitlines():
+        line = line.strip()
+        if not line or line.startswith("--") or line.startswith("/*"):
+            continue
+        current.append(line)
+        if line.endswith(";"):
+            stmt = " ".join(current).strip()
+            if stmt:
+                statements.append(stmt)
+            current = []
 
-    success, fail = 0, 0
+    for stmt in statements:
+        stmt = stmt.replace("%", "%%")
+        conn.execute(text(stmt))
+    conn.commit()
+
+
+def table_has_data(conn, table_name):
+    """Возвращает True, если в таблице есть хотя бы одна запись"""
+    result = conn.execute(text(f"SELECT EXISTS (SELECT 1 FROM {table_name} LIMIT 1)"))
+    return result.scalar()  # True/False
+
+
+def init_db():
     with engine.connect() as conn:
-        for stmt in statements:
-            try:
-                conn.execute(text(stmt))
-                conn.commit()
-                success += 1
-            except Exception as e:
-                conn.rollback()
-                fail += 1
-                print(f"❌ Ошибка при SQL:\n{stmt[:80]}...\nПричина: {e}\n")
-    print(f"✅ Файл {filename} импортирован: {success} успешно, {fail} с ошибками.")
+        inspector = inspect(engine)
+        tables_created = False
+
+        # Создаём таблицы, если их нет
+        if not inspector.has_table("kuking_category") or not inspector.has_table("kuking_recepts"):
+            print("📦 Таблицы не найдены, создаём...")
+            execute_sql_file(TABLES_FILE, conn)
+            tables_created = True
+
+        # Вставляем данные, только если таблицы пустые
+        if not table_has_data(conn, "kuking_category"):
+            print("📦 Вставляем данные в kuking_category...")
+            execute_sql_file(INSERTS_FILE, conn)
+        else:
+            print("✅ Данные уже есть, пропускаем вставку")
+
+        print("✅ Инициализация базы завершена")
 
 @app.on_event("startup")
 def on_startup():
-    print("📦 Создание таблиц...")
-    execute_sql_file(TABLES_FILE)
-
-    print("📦 Импорт данных...")
-    execute_sql_file(INSERTS_FILE)
+    init_db()
 
 @app.get("/")
 def root():
