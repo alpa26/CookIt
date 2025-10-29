@@ -1,5 +1,10 @@
 import subprocess
+from fastapi import FastAPI, File, UploadFile, HTTPException
+import httpx
 
+from services import translate_batch
+
+app = FastAPI()
 from fastapi import FastAPI, Request
 from starlette.middleware.sessions import SessionMiddleware
 from authlib.integrations.starlette_client import OAuth
@@ -12,6 +17,8 @@ import os
 from sqlalchemy import text, inspect
 
 load_dotenv()
+ML_URL = os.getenv("ML_URL", "http://localhost:8000/predict")
+
 print("✅ FastAPI загружается...")
 app = FastAPI()
 
@@ -132,3 +139,38 @@ def get_recept(recept_id: int, db: Session = Depends(get_db)):
     if not recept:
         raise HTTPException(status_code=404, detail="Рецепт не найден")
     return recept
+
+
+@app.post("/upload-photo/")
+async def upload_photo(file: UploadFile = File(...)):
+    if not file.content_type.startswith('image/'):
+        raise HTTPException(status_code=400, detail="Файл должен быть изображением")
+
+    image_data = await file.read()
+
+    # Отправляем другому сервису
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        try:
+            files = {'file': (file.filename, image_data, file.content_type)}
+            response = await client.post(
+                ML_URL,
+                files=files
+            )
+            response.raise_for_status()
+
+            # Получаем JSON ответ
+            result = response.json()
+            ingredients = [detection["class_name"] for detection in result["detections"]]
+
+            tr_ingredients = translate_batch(ingredients)
+
+            return {
+                "message": "Фото успешно отправлено",
+                "external_response": response.json(),
+                "filename": file.filename
+            }
+
+        except httpx.TimeoutException:
+            raise HTTPException(status_code=504, detail="Таймаут при обращении к внешнему сервису")
+        except Exception as e:
+            raise HTTPException(status_code=502, detail=f"Ошибка внешнего сервиса: {str(e)}")
