@@ -1,6 +1,15 @@
-FROM python:3.13.0
+FROM python:3.11-slim
 
 WORKDIR /CookItBackend
+
+RUN pip install --upgrade pip
+
+
+RUN apt-get update && apt-get install -y \
+    gcc \
+    python3-dev \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -8,7 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 RUN useradd --create-home --shell /bin/bash appuser && \
-    chown -R appuser:appuser /app
+    chown -R appuser:appuser /CookItBackend
 USER appuser
 
 EXPOSE 8000
