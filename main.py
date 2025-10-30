@@ -1,6 +1,7 @@
 import subprocess
 from fastapi import FastAPI, File, UploadFile, HTTPException
 import httpx
+from fastapi.middleware.cors import CORSMiddleware
 
 from exceptions import NoIngredientsDetectedError
 from services import translate_batch, find_recipes_by_ingredients_precise
@@ -25,6 +26,24 @@ app = FastAPI()
 
 # Добавляем SessionMiddleware (обязательно для OAuth)
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET", "supersecret"))
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Аналог CORS_ALLOWED_ORIGINS
+    allow_credentials=True,  # Аналог CORS_ALLOW_CREDENTIALS
+    allow_methods=["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"],  # Аналог CORS_ALLOW_METHODS
+    allow_headers=[
+        "accept",
+        "accept-encoding",
+        "authorization",
+        "content-type",
+        "dnt",
+        "origin",
+        "user-agent",
+        "x-csrftoken",
+        "x-requested-with",
+    ],  # Аналог CORS_ALLOW_HEADERS
+)
 
 # Настраиваем OAuth
 oauth = OAuth()
