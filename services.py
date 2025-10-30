@@ -20,7 +20,7 @@ def normalize_ingredient(ingredient):
     return ingredient.lower().strip()
 
 
-def find_recipes_by_ingredients_precise(ingredients_list, db_session):
+def find_recipes_by_ingredients_precise(ingredients_list, db_session, limit=20):
     """
     Более точный поиск с учетом различных форм слов
     """
@@ -35,5 +35,5 @@ def find_recipes_by_ingredients_precise(ingredients_list, db_session):
             plural_form = normalized + 'ы'  # простая логика для множественного числа
             conditions.append(KukingRecept.recept_sostav.ilike(f"%{plural_form}%"))
 
-    recipes = db_session.query(KukingRecept).filter(or_(*conditions)).all()
+    recipes = db_session.query(KukingRecept).filter(or_(*conditions)).limit(limit).all()
     return recipes

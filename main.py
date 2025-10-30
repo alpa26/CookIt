@@ -2,7 +2,8 @@ import subprocess
 from fastapi import FastAPI, File, UploadFile, HTTPException
 import httpx
 
-from services import translate_batch
+from exceptions import NoIngredientsDetectedError
+from services import translate_batch, find_recipes_by_ingredients_precise
 
 app = FastAPI()
 from fastapi import FastAPI, Request
@@ -17,7 +18,7 @@ import os
 from sqlalchemy import text, inspect
 
 load_dotenv()
-ML_URL = os.getenv("ML_URL", "http://localhost:8000/predict")
+ML_URL = os.getenv("ML_URL", "http://127.0.0.1:8080/predict/")
 
 print("✅ FastAPI загружается...")
 app = FastAPI()
@@ -142,7 +143,7 @@ def get_recept(recept_id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/upload-photo/")
-async def upload_photo(file: UploadFile = File(...)):
+async def upload_photo(file: UploadFile = File(...), db: Session = Depends(get_db)):
     if not file.content_type.startswith('image/'):
         raise HTTPException(status_code=400, detail="Файл должен быть изображением")
 
@@ -163,13 +164,27 @@ async def upload_photo(file: UploadFile = File(...)):
             ingredients = [detection["class_name"] for detection in result["detections"]]
 
             tr_ingredients = translate_batch(ingredients)
+            #if not tr_ingredients:
+            #    raise NoIngredientsDetectedError()
+
+            found_recipes = find_recipes_by_ingredients_precise(tr_ingredients, db, limit=20)
 
             return {
-                "message": "Фото успешно отправлено",
-                "external_response": response.json(),
-                "filename": file.filename
+                "message": "Фото успешно обработано",
+                "detected_ingredients": tr_ingredients,
+                "found_recipes_count": len(found_recipes),
+                "recipes": [
+                    {
+                        "id": recipe.id_recepts,
+                        "name": recipe.recept_name,
+                        "ingredients": recipe.recept_sostav,
+                    } for recipe in found_recipes
+                ]
             }
 
+
+        except NoIngredientsDetectedError:
+            raise
         except httpx.TimeoutException:
             raise HTTPException(status_code=504, detail="Таймаут при обращении к внешнему сервису")
         except Exception as e:
