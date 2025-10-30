@@ -178,6 +178,9 @@ async def upload_photo(file: UploadFile = File(...), db: Session = Depends(get_d
                         "id": recipe.id_recepts,
                         "name": recipe.recept_name,
                         "ingredients": recipe.recept_sostav,
+                        "instructions": recipe.recept_instuction,
+                        "category_id": recipe.recept_category,
+                        "podcategory": recipe.podcategory
                     } for recipe in found_recipes
                 ]
             }
