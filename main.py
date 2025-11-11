@@ -123,7 +123,8 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     return crud.create_user(db, user)
 
 # GET — получить всех пользователей
-@app.get("/users/", response_model=list[schemas.UserResponse])
+
+#@app.get("/users/", response_model=list[schemas.UserResponse])
 def list_users(db: Session = Depends(get_db)):
     return crud.get_users(db)
 

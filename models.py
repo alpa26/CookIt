@@ -16,21 +16,85 @@ class User(Base):
     recipes = relationship("Recipe", back_populates="author")
     favorites = relationship("Favorite", back_populates="user")
 
-
 class Recipe(Base):
     __tablename__ = "recipes"
 
-    id = Column(Integer, primary_key=True)
-    title = Column(String)
+    id = Column(Integer, primary_key=True, index=True)
+    source = Column(Text)
+    category = Column(String(255))
+    category_slug = Column(String(255))
+    title = Column(String(500), nullable=False)
     description = Column(Text)
-    image_url = Column(String)
+    note = Column(Text)
+    cuisine = Column(String(255))
+    cuisine_slug = Column(String(255))
+    poster = Column(Text)
+    difficulty = Column(String(100))
+    cooktime = Column(String(100))
+    preparetime = Column(String(100))
+    video = Column(Text)
+    vegan = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    created_by = Column(Integer, ForeignKey("users.id"))
-    author = relationship("User", back_populates="recipes")
+    # Relationships
+    ingredient_groups = relationship("IngredientGroup", back_populates="recipe", cascade="all, delete-orphan")
+    instructions = relationship("Instruction", back_populates="recipe", cascade="all, delete-orphan")
+    tags = relationship("Tag", back_populates="recipe", cascade="all, delete-orphan")
 
-    favorited_by = relationship("Favorite", back_populates="recipe")
 
+class IngredientGroup(Base):
+    __tablename__ = "ingredient_groups"
+
+    id = Column(Integer, primary_key=True, index=True)
+    recipe_id = Column(Integer, ForeignKey("recipes.id", ondelete="CASCADE"))
+    name = Column(String(255))
+    sort_order = Column(Integer)
+
+    # Relationships
+    recipe = relationship("Recipe", back_populates="ingredient_groups")
+    ingredients = relationship("Ingredient", back_populates="group", cascade="all, delete-orphan")
+
+
+class Ingredient(Base):
+    __tablename__ = "ingredients"
+
+    id = Column(Integer, primary_key=True, index=True)
+    group_id = Column(Integer, ForeignKey("ingredient_groups.id", ondelete="CASCADE"))
+    name = Column(String(255), nullable=False)
+    slug = Column(String(255))
+    notes = Column(Text)
+    value = Column(String(100))
+    type = Column(String(100))
+    amount = Column(String(100))
+    sort_order = Column(Integer)
+
+    # Relationships
+    group = relationship("IngredientGroup", back_populates="ingredients")
+
+
+class Instruction(Base):
+    __tablename__ = "instructions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    recipe_id = Column(Integer, ForeignKey("recipes.id", ondelete="CASCADE"))
+    text = Column(Text, nullable=False)
+    image = Column(Text)
+    step_number = Column(Integer)
+
+    # Relationships
+    recipe = relationship("Recipe", back_populates="instructions")
+
+
+class Tag(Base):
+    __tablename__ = "tags"
+
+    id = Column(Integer, primary_key=True, index=True)
+    recipe_id = Column(Integer, ForeignKey("recipes.id", ondelete="CASCADE"))
+    name = Column(String(255), nullable=False)
+    slug = Column(String(255))
+
+    # Relationships
+    recipe = relationship("Recipe", back_populates="tags")
 
 class Favorite(Base):
     __tablename__ = "favorites"
@@ -42,20 +106,3 @@ class Favorite(Base):
 
     user = relationship("User", back_populates="favorites")
     recipe = relationship("Recipe", back_populates="favorited_by")
-
-class KukingCategory(Base):
-    __tablename__ = "kuking_category"
-
-    id_category = Column(BigInteger, primary_key=True, index=True)
-    category_name = Column(String(45), nullable=False)
-
-
-class KukingRecept(Base):
-    __tablename__ = "kuking_recepts"
-
-    id_recepts = Column(BigInteger, primary_key=True, index=True)
-    recept_category = Column(BigInteger, ForeignKey("kuking_category.id_category"), nullable=False)
-    podcategory = Column(String(100), default="разное")
-    recept_name = Column(String(100), nullable=False)
-    recept_sostav = Column(Text)
-    recept_instuction = Column(Text, nullable=False)
