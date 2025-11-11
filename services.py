@@ -2,7 +2,6 @@ from deep_translator import GoogleTranslator
 from sqlalchemy import or_
 import re
 
-from models import KukingRecept
 
 
 def translate_batch(word_list):
@@ -19,11 +18,9 @@ def normalize_ingredient(ingredient):
     """Нормализация названия ингредиента"""
     return ingredient.lower().strip()
 
-
+"""
 def find_recipes_by_ingredients_precise(ingredients_list, db_session, limit=20):
-    """
-    Более точный поиск с учетом различных форм слов
-    """
+
     conditions = []
 
     for ingredient in ingredients_list:
@@ -37,3 +34,4 @@ def find_recipes_by_ingredients_precise(ingredients_list, db_session, limit=20):
 
     recipes = db_session.query(KukingRecept).filter(or_(*conditions)).limit(limit).all()
     return recipes
+"""

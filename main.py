@@ -4,7 +4,7 @@ import httpx
 from fastapi.middleware.cors import CORSMiddleware
 
 from exceptions import NoIngredientsDetectedError
-from services import translate_batch, find_recipes_by_ingredients_precise
+from services import translate_batch
 
 app = FastAPI()
 from fastapi import FastAPI, Request
@@ -56,8 +56,18 @@ oauth.register(
 )
 
 BASE_DIR = os.path.dirname(__file__)  # директория, где лежит main.py
+DROP_FILE = os.path.join(BASE_DIR, "sql", "drop.sql")
 TABLES_FILE = os.path.join(BASE_DIR, "sql", "tables.sql")
-INSERTS_FILE = os.path.join(BASE_DIR, "sql", "inserts.sql")
+INSERT_CATEGORIES_FILE = os.path.join(BASE_DIR, "sql", "insert_categories.sql")
+INSERT_CUISINES_FILE = os.path.join(BASE_DIR, "sql", "insert_cuisines.sql")
+INSERT_INGREDIENT_GROUPS_FILE = os.path.join(BASE_DIR, "sql", "insert_ingredient_groups.sql")
+INSERT_INGREDIENTS_FILE = os.path.join(BASE_DIR, "sql", "insert_ingredients.sql")
+INSERT_INSTRUCTIONS_FILE = os.path.join(BASE_DIR, "sql", "insert_instructions.sql")
+INSERT_RECIPE_INGREDIENT_GROUPS_FILE = os.path.join(BASE_DIR, "sql", "insert_recipe_ingredient_groups.sql")
+INSERT_RECIPE_INGREDIENTS_FILE = os.path.join(BASE_DIR, "sql", "insert_recipe_ingredients.sql")
+INSERT_RECIPE_TAGS_FILE = os.path.join(BASE_DIR, "sql", "insert_recipe_tags.sql")
+INSERT_RECIPES_FILE = os.path.join(BASE_DIR, "sql", "insert_recipes.sql")
+INSERT_TAGS_FILE = os.path.join(BASE_DIR, "sql", "insert_tags.sql")
 
 
 def execute_sql_file(filename, conn):
@@ -94,16 +104,28 @@ def init_db():
         inspector = inspect(engine)
         tables_created = False
 
+        # Так нада
+        execute_sql_file(DROP_FILE, conn)
+
         # Создаём таблицы, если их нет
-        if not inspector.has_table("kuking_category") or not inspector.has_table("kuking_recepts"):
+        if not inspector.has_table("recipes") or not inspector.has_table("ingredients"):
             print("📦 Таблицы не найдены, создаём...")
             execute_sql_file(TABLES_FILE, conn)
             tables_created = True
 
         # Вставляем данные, только если таблицы пустые
-        if not table_has_data(conn, "kuking_category"):
-            print("📦 Вставляем данные в kuking_category...")
-            execute_sql_file(INSERTS_FILE, conn)
+        if not table_has_data(conn, "recipes"):
+            print("📦 Вставляем данные в recipes...")
+            execute_sql_file(INSERT_TAGS_FILE, conn)
+            execute_sql_file(INSERT_CATEGORIES_FILE, conn)
+            execute_sql_file(INSERT_CUISINES_FILE, conn)
+            execute_sql_file(INSERT_INGREDIENTS_FILE, conn)
+            execute_sql_file(INSERT_INGREDIENT_GROUPS_FILE, conn)
+            execute_sql_file(INSERT_RECIPES_FILE, conn)
+            execute_sql_file(INSERT_RECIPE_TAGS_FILE, conn)
+            execute_sql_file(INSERT_INSTRUCTIONS_FILE, conn)
+            execute_sql_file(INSERT_RECIPE_INGREDIENT_GROUPS_FILE, conn)
+            execute_sql_file(INSERT_RECIPE_INGREDIENTS_FILE, conn)
         else:
             print("✅ Данные уже есть, пропускаем вставку")
 
@@ -187,7 +209,7 @@ async def upload_photo(file: UploadFile = File(...), db: Session = Depends(get_d
             #if not tr_ingredients:
             #    raise NoIngredientsDetectedError()
 
-            found_recipes = find_recipes_by_ingredients_precise(tr_ingredients, db, limit=20)
+            found_recipes = [] #find_recipes_by_ingredients_precise(tr_ingredients, db, limit=20)
 
             return {
                 "message": "Фото успешно обработано",
