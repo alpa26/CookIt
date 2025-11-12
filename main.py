@@ -173,12 +173,30 @@ def get_categories(db: Session = Depends(get_db)):
 
 @app.get("/recepts", response_model=list[schemas.KukingReceptResponse])
 def get_recepts(limit: int = 20, db: Session = Depends(get_db)):
-    return db.query(models.KukingRecept).limit(limit).all()
+    recipes = b.query(models.Recipe).limit(limit).all()
+
+    return {
+        "message": "Фото успешно обработано",
+        "detected_ingredients": tr_ingredients,
+        "found_recipes_count": len(found_recipes),
+        "recipes": [
+            {
+                "id": recipe.id_recepts,
+                "name": recipe.recept_name,
+                "ingredients": recipe.recept_sostav,
+                "instructions": recipe.recept_instuction,
+                "category_id": recipe.recept_category,
+                "podcategory": recipe.podcategory
+            } for recipe in found_recipes
+        ]
+    }
+
+    return db.query(models.Recipe).limit(limit).all()
 
 
 @app.get("/recepts/{recept_id}", response_model=schemas.KukingReceptResponse)
 def get_recept(recept_id: int, db: Session = Depends(get_db)):
-    recept = db.query(models.KukingRecept).filter(models.KukingRecept.id_recepts == recept_id).first()
+    recept = db.query(models.Recipe).filter(models.Recipe.id == recept_id).first()
     if not recept:
         raise HTTPException(status_code=404, detail="Рецепт не найден")
     return recept
@@ -206,9 +224,17 @@ async def upload_photo(file: UploadFile = File(...), db: Session = Depends(get_d
             ingredients = [detection["class_name"] for detection in result["detections"]]
 
             tr_ingredients = translate_batch(ingredients)
-            #if not tr_ingredients:
-            #    raise NoIngredientsDetectedError()
 
+            if not tr_ingredients:
+                raise NoIngredientsDetectedError()
+
+            return {
+                "message": "Фото успешно обработано",
+                "found_ingredients_count": len(tr_ingredients),
+                "ingredients": tr_ingredients
+            }
+
+            """
             found_recipes = [] #find_recipes_by_ingredients_precise(tr_ingredients, db, limit=20)
 
             return {
@@ -226,8 +252,7 @@ async def upload_photo(file: UploadFile = File(...), db: Session = Depends(get_d
                     } for recipe in found_recipes
                 ]
             }
-
-
+            """
         except NoIngredientsDetectedError:
             raise
         except httpx.TimeoutException:
