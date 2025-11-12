@@ -198,13 +198,19 @@ def get_recipes(limit: int = 20, db: Session = Depends(get_db)):
     return db.query(models.Recipe).limit(limit).all()
 
 
-@app.get("/recepts/{recept_id}", response_model=schemas.RecipeResponse)
+@app.get("/recipes/search/{search_word}",response_model=list[schemas.RecipeListResponse])
+def get_recepts_by_word(search_word: str, limit: int = 20, db: Session = Depends(get_db)):
+    recept = db.query(models.Recipe).filter(models.Recipe.title.ilike(f"%{search_word}%")).limit(limit).all()
+    if not recept:
+        raise HTTPException(status_code=404, detail="Рецепты не найдены")
+    return recept
+
+@app.get("/recipes/{recept_id}", response_model=schemas.RecipeResponse)
 def get_recept(recept_id: int, db: Session = Depends(get_db)):
     recept = db.query(models.Recipe).filter(models.Recipe.id == recept_id).first()
     if not recept:
         raise HTTPException(status_code=404, detail="Рецепт не найден")
     return recept
-
 
 @app.post("/upload-photo/")
 async def upload_photo(file: UploadFile = File(...), db: Session = Depends(get_db)):
