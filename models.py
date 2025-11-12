@@ -16,17 +16,45 @@ class User(Base):
     recipes = relationship("Recipe", back_populates="author")
     favorites = relationship("Favorite", back_populates="user")
 
+class Category(Base):
+    __tablename__ = "categories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False, unique=True)
+    slug = Column(String(255), unique=True, index=True)
+    description = Column(Text)
+    image = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    recipes = relationship("Recipe", back_populates="category_rel")
+
+
+class Cuisine(Base):
+    __tablename__ = "cuisines"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False, unique=True)
+    slug = Column(String(255), unique=True, index=True)
+    description = Column(Text)
+    image = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    recipes = relationship("Recipe", back_populates="cuisine_rel")
+
+
 class Recipe(Base):
     __tablename__ = "recipes"
 
     id = Column(Integer, primary_key=True, index=True)
     source = Column(Text)
-    category = Column(String(255))
+    category_id = Column(Integer, ForeignKey("categories.id"))
+    category = Column(String(255))  # Оставляем для обратной совместимости
     category_slug = Column(String(255))
     title = Column(String(500), nullable=False)
     description = Column(Text)
     note = Column(Text)
-    cuisine = Column(String(255))
+    cuisine_id = Column(Integer, ForeignKey("cuisines.id"))
+    cuisine = Column(String(255))  # Оставляем для обратной совместимости
     cuisine_slug = Column(String(255))
     poster = Column(Text)
     difficulty = Column(String(100))
@@ -36,7 +64,8 @@ class Recipe(Base):
     vegan = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # Relationships
+    category_rel = relationship("Category", back_populates="recipes")
+    cuisine_rel = relationship("Cuisine", back_populates="recipes")
     ingredient_groups = relationship("IngredientGroup", back_populates="recipe", cascade="all, delete-orphan")
     instructions = relationship("Instruction", back_populates="recipe", cascade="all, delete-orphan")
     tags = relationship("Tag", back_populates="recipe", cascade="all, delete-orphan")
@@ -50,7 +79,6 @@ class IngredientGroup(Base):
     name = Column(String(255))
     sort_order = Column(Integer)
 
-    # Relationships
     recipe = relationship("Recipe", back_populates="ingredient_groups")
     ingredients = relationship("Ingredient", back_populates="group", cascade="all, delete-orphan")
 
@@ -68,7 +96,6 @@ class Ingredient(Base):
     amount = Column(String(100))
     sort_order = Column(Integer)
 
-    # Relationships
     group = relationship("IngredientGroup", back_populates="ingredients")
 
 
@@ -81,9 +108,7 @@ class Instruction(Base):
     image = Column(Text)
     step_number = Column(Integer)
 
-    # Relationships
     recipe = relationship("Recipe", back_populates="instructions")
-
 
 class Tag(Base):
     __tablename__ = "tags"
@@ -93,7 +118,6 @@ class Tag(Base):
     name = Column(String(255), nullable=False)
     slug = Column(String(255))
 
-    # Relationships
     recipe = relationship("Recipe", back_populates="tags")
 
 class Favorite(Base):

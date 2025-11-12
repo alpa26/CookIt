@@ -100,36 +100,53 @@ def table_has_data(conn, table_name):
 
 
 def init_db():
-    with engine.connect() as conn:
-        inspector = inspect(engine)
-        tables_created = False
+    try:
+        with engine.connect() as conn:
+            inspector = inspect(engine)
+            tables_created = False
+            print("🔄 Инициализация базы запущена")
 
-        # Так нада
-        execute_sql_file(DROP_FILE, conn)
 
-        # Создаём таблицы, если их нет
-        if not inspector.has_table("recipes") or not inspector.has_table("ingredients"):
-            print("📦 Таблицы не найдены, создаём...")
-            execute_sql_file(TABLES_FILE, conn)
-            tables_created = True
+            # Так нада
+            print("💣 Очищаем схему...")
+            execute_sql_file(DROP_FILE, conn)
 
-        # Вставляем данные, только если таблицы пустые
-        if not table_has_data(conn, "recipes"):
-            print("📦 Вставляем данные в recipes...")
-            execute_sql_file(INSERT_TAGS_FILE, conn)
-            execute_sql_file(INSERT_CATEGORIES_FILE, conn)
-            execute_sql_file(INSERT_CUISINES_FILE, conn)
-            execute_sql_file(INSERT_INGREDIENTS_FILE, conn)
-            execute_sql_file(INSERT_INGREDIENT_GROUPS_FILE, conn)
-            execute_sql_file(INSERT_RECIPES_FILE, conn)
-            execute_sql_file(INSERT_RECIPE_TAGS_FILE, conn)
-            execute_sql_file(INSERT_INSTRUCTIONS_FILE, conn)
-            execute_sql_file(INSERT_RECIPE_INGREDIENT_GROUPS_FILE, conn)
-            execute_sql_file(INSERT_RECIPE_INGREDIENTS_FILE, conn)
-        else:
-            print("✅ Данные уже есть, пропускаем вставку")
+            # Создаём таблицы, если их нет
+            if not inspector.has_table("recipes") or not inspector.has_table("ingredients"):
+                print("⚒️ Создаём таблицы...")
+                execute_sql_file(TABLES_FILE, conn)
+                tables_created = True
 
-        print("✅ Инициализация базы завершена")
+            # Вставляем данные, только если таблицы пустые
+            if not table_has_data(conn, "recipes"):
+                print("📦 Вставляем данные в таблицы...")
+                execute_sql_file(INSERT_TAGS_FILE, conn)
+                print(" ✅ (1/10) Теги загружены")
+                execute_sql_file(INSERT_CATEGORIES_FILE, conn)
+                print(" ✅ (2/10) Категории №1 загружены")
+                execute_sql_file(INSERT_CUISINES_FILE, conn)
+                print(" ✅ (3/10) Категории №2 загружены")
+                execute_sql_file(INSERT_INGREDIENTS_FILE, conn)
+                print(" ✅ (4/10) Ингридиенты загружены")
+                execute_sql_file(INSERT_INGREDIENT_GROUPS_FILE, conn)
+                print(" ✅ (5/10) Группы ингридиентов загружены")
+                execute_sql_file(INSERT_RECIPES_FILE, conn)
+                print(" ✅ (6/10) Рецепты загружены")
+                execute_sql_file(INSERT_RECIPE_TAGS_FILE, conn)
+                print(" ✅ (7/10) Таблица recipe_tags для связи M2M заполнена")
+                execute_sql_file(INSERT_INSTRUCTIONS_FILE, conn)
+                print(" ✅ (8/10) Инструкции загружены")
+                execute_sql_file(INSERT_RECIPE_INGREDIENT_GROUPS_FILE, conn)
+                print(" ✅ (9/10) Таблица recipe_ingredient_groups для связи M2M заполнена")
+                execute_sql_file(INSERT_RECIPE_INGREDIENTS_FILE, conn)
+                print(" ✅ (10/10) Таблица recipe_ingredients для связи M2M заполнена")
+            else:
+                print("✅ Данные уже есть, пропускаем вставку")
+
+            print("✅ Инициализация базы завершена")
+    except:
+        print("❗️❗️❗️ Непредвиденная ошибка при инициализация базы")
+        print("❌ Инициализация базы прервана")
 
 @app.on_event("startup")
 def on_startup():
@@ -166,35 +183,21 @@ async def auth_callback(request: Request):
     except Exception as e:
         return {"error": str(e)}
 
-@app.get("/categories", response_model=list[schemas.KukingCategoryResponse])
+@app.get("/tags", response_model=list[schemas.TagResponse])
 def get_categories(db: Session = Depends(get_db)):
-    return db.query(models.KukingCategory).all()
+    return db.query(models.TagResponse).all()
+
+@app.get("/categories", response_model=list[schemas.CategoryResponse])
+def get_categories(db: Session = Depends(get_db)):
+    return db.query(models.CategoryResponse).all()
 
 
-@app.get("/recepts", response_model=list[schemas.KukingReceptResponse])
-def get_recepts(limit: int = 20, db: Session = Depends(get_db)):
-    recipes = b.query(models.Recipe).limit(limit).all()
-
-    return {
-        "message": "Фото успешно обработано",
-        "detected_ingredients": tr_ingredients,
-        "found_recipes_count": len(found_recipes),
-        "recipes": [
-            {
-                "id": recipe.id_recepts,
-                "name": recipe.recept_name,
-                "ingredients": recipe.recept_sostav,
-                "instructions": recipe.recept_instuction,
-                "category_id": recipe.recept_category,
-                "podcategory": recipe.podcategory
-            } for recipe in found_recipes
-        ]
-    }
-
+@app.get("/recipes", response_model=list[schemas.RecipeListResponse])
+def get_recipes(limit: int = 20, db: Session = Depends(get_db)):
     return db.query(models.Recipe).limit(limit).all()
 
 
-@app.get("/recepts/{recept_id}", response_model=schemas.KukingReceptResponse)
+@app.get("/recepts/{recept_id}", response_model=schemas.RecipeResponse)
 def get_recept(recept_id: int, db: Session = Depends(get_db)):
     recept = db.query(models.Recipe).filter(models.Recipe.id == recept_id).first()
     if not recept:
