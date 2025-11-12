@@ -9,7 +9,7 @@ services:
     depends_on:
       - db
     volumes:
-      - .:/CookItBackend  # Монтируем в папку CookItBackend
+      - .:/CookItBackend
     command: python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   db:
@@ -22,8 +22,17 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./sql/tables.sql:/docker-entrypoint-initdb.d/1-tables.sql
-      - ./sql/inserts.sql:/docker-entrypoint-initdb.d/2-inserts.sql
+      #- ./sql/tables.sql:/docker-entrypoint-initdb.d/1-tables.sql
+      #- ./sql/insert_tags.sql:/docker-entrypoint-initdb.d/2-insert_tags.sql
+      #- ./sql/insert_categories.sql:/docker-entrypoint-initdb.d/2-insert_categories.sql
+      #- ./sql/insert_cuisines.sql:/docker-entrypoint-initdb.d/2-insert_cuisines.sql
+      #- ./sql/insert_ingredients.sql:/docker-entrypoint-initdb.d/2-insert_ingredients.sql
+      #- ./sql/insert_ingredient_groups.sql:/docker-entrypoint-initdb.d/2-insert_ingredient_groups.sql
+      #- ./sql/insert_recipes.sql:/docker-entrypoint-initdb.d/2-insert_recipes.sql
+      #- ./sql/insert_recipe_tags.sql:/docker-entrypoint-initdb.d/2-insert_recipe_tags.sql
+      #- ./sql/insert_instructions.sql:/docker-entrypoint-initdb.d/2-insert_instructions.sql
+      #- ./sql/insert_recipe_ingredient_groups.sql:/docker-entrypoint-initdb.d/2-insert_recipe_ingredient_groups.sql
+      #- ./sql/insert_recipe_ingredients.sql:/docker-entrypoint-initdb.d/2-insert_recipe_ingredients.sql
 
 volumes:
   postgres_data:
