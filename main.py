@@ -108,9 +108,10 @@ def init_db():
 
 
             # Так нада
+            """
             print("💣 Очищаем схему...")
             execute_sql_file(DROP_FILE, conn)
-
+            """
             # Создаём таблицы, если их нет
             if not inspector.has_table("recipes") or not inspector.has_table("ingredients"):
                 print("⚒️ Создаём таблицы...")

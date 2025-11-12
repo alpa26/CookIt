@@ -1,7 +1,4 @@
 from pydantic import BaseModel
-from datetime import datetime
-
-from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 
@@ -10,7 +7,6 @@ class CategoryBase(BaseModel):
     name: str
     slug: str
     description: Optional[str] = None
-    image: Optional[str] = None
 
 
 class CategoryCreate(CategoryBase):
@@ -19,7 +15,6 @@ class CategoryCreate(CategoryBase):
 
 class CategoryResponse(CategoryBase):
     id: int
-    created_at: datetime
 
     class Config:
         from_attributes = True
@@ -30,7 +25,6 @@ class CuisineBase(BaseModel):
     name: str
     slug: str
     description: Optional[str] = None
-    image: Optional[str] = None
 
 
 class CuisineCreate(CuisineBase):
@@ -39,7 +33,6 @@ class CuisineCreate(CuisineBase):
 
 class CuisineResponse(CuisineBase):
     id: int
-    created_at: datetime
 
     class Config:
         from_attributes = True
@@ -56,10 +49,18 @@ class IngredientBase(BaseModel):
     sort_order: Optional[int] = None
 
 
+class IngredientCreate(IngredientBase):
+    pass
+
+
 class IngredientGroupBase(BaseModel):
     name: Optional[str] = None
     sort_order: Optional[int] = None
     list: List[IngredientBase] = []
+
+
+class IngredientGroupCreate(IngredientGroupBase):
+    pass
 
 
 class InstructionBase(BaseModel):
@@ -68,9 +69,17 @@ class InstructionBase(BaseModel):
     step_number: int
 
 
+class InstructionCreate(InstructionBase):
+    pass
+
+
 class TagBase(BaseModel):
     name: str
     slug: Optional[str] = None
+
+
+class TagCreate(TagBase):
+    pass
 
 
 # Recipe models
@@ -91,14 +100,12 @@ class RecipeCreate(RecipeBase):
     category_id: Optional[int] = None
     cuisine_id: Optional[int] = None
     # Для обратной совместимости
-    category: Optional[str] = None
-    category_slug: Optional[str] = None
-    cuisine: Optional[str] = None
-    cuisine_slug: Optional[str] = None
+    category_name: Optional[str] = None  # Исправлено с category
+    cuisine_name: Optional[str] = None   # Исправлено с cuisine
 
-    ingredients: List[IngredientGroupBase] = []
-    instruction: List[InstructionBase] = []
-    tags: List[TagBase] = []
+    ingredients: List[IngredientGroupCreate] = []  # Исправлено тип
+    instructions: List[InstructionCreate] = []     # Исправлено имя поля и тип
+    tags: List[TagCreate] = []                     # Исправлено тип
 
 
 class RecipeUpdate(BaseModel):
@@ -127,8 +134,7 @@ class IngredientResponse(IngredientBase):
 
 class IngredientGroupResponse(IngredientGroupBase):
     id: int
-    recipe_id: int
-    ingredients: List[IngredientResponse] = []
+    ingredients: List[IngredientResponse] = []  # Исправлено с list
 
     class Config:
         from_attributes = True
@@ -144,28 +150,60 @@ class InstructionResponse(InstructionBase):
 
 class TagResponse(TagBase):
     id: int
-    recipe_id: int
 
     class Config:
         from_attributes = True
 
+class RecipeIngredientBase(BaseModel):
+    name: Optional[str] = None
+    value: Optional[str] = None
+    type: Optional[str] = None
+    amount: Optional[str] = None
+    notes: Optional[str] = None
+    sort_order: Optional[int] = None
+
+class RecipeIngredientResponse(RecipeIngredientBase):
+    id: int
+    recipe_group_id: int
+    ingredient_id: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+class RecipeTagResponse(BaseModel):
+    recipe_id: int
+    tag_id: int
+    tag: Optional["TagResponse"] = None  # Добавь связь с тегом
+
+    class Config:
+        from_attributes = True
+
+class RecipeIngredientGroupBase(BaseModel):
+    sort_order: Optional[int] = None
+
+class RecipeIngredientGroupResponse(RecipeIngredientGroupBase):
+    id: int
+    recipe_id: int
+    group_id: int
+    group: Optional["IngredientGroupResponse"] = None
+    ingredients: List[RecipeIngredientResponse] = []
+
+    class Config:
+        from_attributes = True
 
 class RecipeResponse(RecipeBase):
     id: int
     category_id: Optional[int] = None
     cuisine_id: Optional[int] = None
-    category: Optional[str] = None
-    category_slug: Optional[str] = None
-    cuisine: Optional[str] = None
-    cuisine_slug: Optional[str] = None
+    category_name: Optional[str] = None
+    cuisine_name: Optional[str] = None
     created_at: datetime
 
-    # Relationships
     category_rel: Optional[CategoryResponse] = None
     cuisine_rel: Optional[CuisineResponse] = None
-    ingredient_groups: List[IngredientGroupResponse] = []
+    recipe_ingredient_groups: List[RecipeIngredientGroupResponse] = []
+    recipe_tags: List[RecipeTagResponse] = []
     instructions: List[InstructionResponse] = []
-    tags: List[TagResponse] = []
 
     class Config:
         from_attributes = True
@@ -174,10 +212,8 @@ class RecipeResponse(RecipeBase):
 class RecipeListResponse(BaseModel):
     id: int
     title: str
-    category: Optional[str] = None
-    category_slug: Optional[str] = None
-    cuisine: Optional[str] = None
-    cuisine_slug: Optional[str] = None
+    category_name: Optional[str] = None  # Исправлено с category
+    cuisine_name: Optional[str] = None   # Исправлено с cuisine
     poster: Optional[str] = None
     difficulty: Optional[str] = None
     cooktime: Optional[str] = None
@@ -187,19 +223,41 @@ class RecipeListResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# User
 
+# User models
 class UserBase(BaseModel):
     name: str
     email: str
-    avatar_url: str | None = None
+    avatar_url: Optional[str] = None
+
 
 class UserCreate(UserBase):
-    pass
+    google_id: Optional[str] = None  # Добавлено отсутствующее поле
+
 
 class UserResponse(UserBase):
     id: int
+    google_id: Optional[str] = None  # Добавлено отсутствующее поле
     created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Favorite models
+class FavoriteBase(BaseModel):
+    recipe_id: int
+
+
+class FavoriteCreate(FavoriteBase):
+    pass
+
+
+class FavoriteResponse(FavoriteBase):
+    id: int
+    user_id: int
+    created_at: datetime
+    recipe: Optional[RecipeListResponse] = None  # Добавлено для связи с рецептом
 
     class Config:
         from_attributes = True
