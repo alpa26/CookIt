@@ -14,7 +14,7 @@ class CategoryCreate(CategoryBase):
 
 
 class CategoryResponse(CategoryBase):
-    id: int
+    #id: int
 
     class Config:
         from_attributes = True
@@ -32,7 +32,7 @@ class CuisineCreate(CuisineBase):
 
 
 class CuisineResponse(CuisineBase):
-    id: int
+    #id: int
 
     class Config:
         from_attributes = True
@@ -46,7 +46,7 @@ class IngredientBase(BaseModel):
     value: Optional[str] = None
     type: Optional[str] = None
     amount: Optional[str] = None
-    sort_order: Optional[int] = None
+    #sort_order: Optional[int] = None
 
 
 class IngredientCreate(IngredientBase):
@@ -55,8 +55,8 @@ class IngredientCreate(IngredientBase):
 
 class IngredientGroupBase(BaseModel):
     name: Optional[str] = None
-    sort_order: Optional[int] = None
-    list: List[IngredientBase] = []
+    #sort_order: Optional[int] = None
+    #list: List[IngredientBase] = []
 
 
 class IngredientGroupCreate(IngredientGroupBase):
@@ -133,23 +133,23 @@ class IngredientResponse(IngredientBase):
 
 
 class IngredientGroupResponse(IngredientGroupBase):
-    id: int
-    ingredients: List[IngredientResponse] = []  # Исправлено с list
+    #id: int
+    #ingredients: List[IngredientResponse] = []  # Исправлено с list
 
     class Config:
         from_attributes = True
 
 
 class InstructionResponse(InstructionBase):
-    id: int
-    recipe_id: int
+    #id: int
+    #recipe_id: int
 
     class Config:
         from_attributes = True
 
 
 class TagResponse(TagBase):
-    id: int
+    #id: int
 
     class Config:
         from_attributes = True
@@ -160,19 +160,19 @@ class RecipeIngredientBase(BaseModel):
     type: Optional[str] = None
     amount: Optional[str] = None
     notes: Optional[str] = None
-    sort_order: Optional[int] = None
+    #sort_order: Optional[int] = None
 
 class RecipeIngredientResponse(RecipeIngredientBase):
-    id: int
-    recipe_group_id: int
-    ingredient_id: Optional[int] = None
+    #id: int
+    #recipe_group_id: int
+    #ingredient_id: Optional[int] = None
 
     class Config:
         from_attributes = True
 
 class RecipeTagResponse(BaseModel):
-    recipe_id: int
-    tag_id: int
+    #recipe_id: int
+    #tag_id: int
     tag: Optional["TagResponse"] = None  # Добавь связь с тегом
 
     class Config:
@@ -182,9 +182,9 @@ class RecipeIngredientGroupBase(BaseModel):
     sort_order: Optional[int] = None
 
 class RecipeIngredientGroupResponse(RecipeIngredientGroupBase):
-    id: int
-    recipe_id: int
-    group_id: int
+    #id: int
+    #recipe_id: int
+    #group_id: int
     group: Optional["IngredientGroupResponse"] = None
     ingredients: List[RecipeIngredientResponse] = []
 
@@ -192,9 +192,9 @@ class RecipeIngredientGroupResponse(RecipeIngredientGroupBase):
         from_attributes = True
 
 class RecipeResponse(RecipeBase):
-    id: int
-    category_id: Optional[int] = None
-    cuisine_id: Optional[int] = None
+    #id: int
+    #category_id: Optional[int] = None
+    #cuisine_id: Optional[int] = None
     category_name: Optional[str] = None
     cuisine_name: Optional[str] = None
     created_at: datetime
