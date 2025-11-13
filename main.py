@@ -185,12 +185,16 @@ async def auth_callback(request: Request):
         return {"error": str(e)}
 
 @app.get("/tags", response_model=list[schemas.TagResponse])
-def get_categories(db: Session = Depends(get_db)):
-    return db.query(models.TagResponse).all()
+def get_tags(db: Session = Depends(get_db)):
+    return db.query(models.Tag).all()
 
 @app.get("/categories", response_model=list[schemas.CategoryResponse])
 def get_categories(db: Session = Depends(get_db)):
-    return db.query(models.CategoryResponse).all()
+    return db.query(models.Category).all()
+
+@app.get("/cuisines", response_model=list[schemas.CuisineResponse])
+def get_cuisines(db: Session = Depends(get_db)):
+    return db.query(models.Cuisine).all()
 
 @app.post("/recipes/search/by-ingredients", response_model=list[schemas.RecipeListResponse])
 def search_recipes_by_ingredients(request: schemas.IngredientSearchRequest,
