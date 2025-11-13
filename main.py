@@ -1,11 +1,10 @@
 import subprocess
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException,Query
 import httpx
 from fastapi.middleware.cors import CORSMiddleware
-
 from exceptions import NoIngredientsDetectedError
 from services import translate_batch
-
+from sqlalchemy import func
 app = FastAPI()
 from fastapi import FastAPI, Request
 from starlette.middleware.sessions import SessionMiddleware
@@ -16,6 +15,7 @@ from sqlalchemy.orm import Session
 import models, schemas, crud
 from database import engine, get_db, Base
 import os
+from models import Recipe, RecipeIngredient, Ingredient, RecipeIngredientGroup
 from sqlalchemy import text, inspect
 
 load_dotenv()
@@ -192,8 +192,74 @@ def get_categories(db: Session = Depends(get_db)):
 def get_categories(db: Session = Depends(get_db)):
     return db.query(models.CategoryResponse).all()
 
+@app.post("/recipes/search/by-ingredients", response_model=list[schemas.RecipeListResponse])
+def search_recipes_by_ingredients(request: schemas.IngredientSearchRequest,
+                                  limit: int = 20,
+                                  db: Session = Depends(get_db)):
+    ingredient_names = [i.name.strip().lower() for i in request.ingredients if i.name.strip()]
 
-@app.get("/recipes", response_model=list[schemas.RecipeListResponse])
+    subq = (
+        db.query(
+            Recipe.id.label("recipe_id"),
+            func.count(func.distinct(Ingredient.id)).label("match_count")
+        )
+        .join(Recipe.recipe_ingredient_groups)  # Recipe → RecipeIngredientGroup
+        .join(RecipeIngredient, RecipeIngredient.recipe_group_id == RecipeIngredientGroup.id)
+        .join(Ingredient, Ingredient.id == RecipeIngredient.ingredient_id)
+        .filter(
+            func.lower(Ingredient.name).in_(ingredient_names) |
+            func.lower(Ingredient.slug).in_(ingredient_names)
+        )
+        .group_by(Recipe.id)
+        .subquery()
+    )
+
+    query = (
+        db.query(Recipe, subq.c.match_count)
+        .join(subq, Recipe.id == subq.c.recipe_id)
+        .order_by(subq.c.match_count.desc())
+        .limit(limit)
+        .all()
+    )
+
+    results = []
+
+    for r, match_count in query:
+        matched_ingredients = (
+            db.query(Ingredient.name)
+            .join(RecipeIngredient, Ingredient.id == RecipeIngredient.ingredient_id)
+            .join(RecipeIngredientGroup, RecipeIngredient.recipe_group_id == RecipeIngredientGroup.id)
+            .filter(
+                RecipeIngredientGroup.recipe_id == r.id,
+                func.lower(Ingredient.name).in_(ingredient_names)
+            )
+            .distinct()
+            .all()
+        )
+
+        matched_list = [i[0] for i in matched_ingredients]
+
+        results.append(
+            {
+                "id": r.id,
+                "title": r.title,
+                "category_name": r.category_name,
+                "cuisine_name": r.cuisine_name,
+                "poster": r.poster,
+                "difficulty": r.difficulty,
+                "cooktime": r.cooktime,
+                "vegan": r.vegan,
+                "created_at": r.created_at,
+                "match_count": match_count,
+                "matched_ingredients": matched_list
+            }
+        )
+
+    return results
+
+    #return db.query(models.Recipe).limit(limit).all()
+
+@app.get("/recipes/all", response_model=list[schemas.RecipeListResponse])
 def get_recipes(limit: int = 20, db: Session = Depends(get_db)):
     return db.query(models.Recipe).limit(limit).all()
 

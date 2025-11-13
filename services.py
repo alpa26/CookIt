@@ -18,7 +18,7 @@ def normalize_ingredient(ingredient):
     """Нормализация названия ингредиента"""
     return ingredient.lower().strip()
 
-"""
+
 def find_recipes_by_ingredients_precise(ingredients_list, db_session, limit=20):
 
     conditions = []
@@ -29,9 +29,8 @@ def find_recipes_by_ingredients_precise(ingredients_list, db_session, limit=20):
         conditions.append(KukingRecept.recept_sostav.ilike(f"%{normalized}%"))
 
         if normalized.endswith(('а', 'я', 'о', 'е', 'ь')):
-            plural_form = normalized + 'ы'  # простая логика для множественного числа
+            plural_form = normalized + 'ы'
             conditions.append(KukingRecept.recept_sostav.ilike(f"%{plural_form}%"))
 
     recipes = db_session.query(KukingRecept).filter(or_(*conditions)).limit(limit).all()
     return recipes
-"""

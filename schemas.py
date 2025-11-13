@@ -62,6 +62,11 @@ class IngredientGroupBase(BaseModel):
 class IngredientGroupCreate(IngredientGroupBase):
     pass
 
+class IngredientInput(BaseModel):
+    name: str
+
+class IngredientSearchRequest(BaseModel):
+    ingredients: List[IngredientInput]
 
 class InstructionBase(BaseModel):
     text: str
@@ -219,6 +224,8 @@ class RecipeListResponse(BaseModel):
     cooktime: Optional[str] = None
     vegan: bool = False
     created_at: datetime
+    match_count: Optional[int] = None
+    matched_ingredients: Optional[list[str]] = None
 
     class Config:
         from_attributes = True
