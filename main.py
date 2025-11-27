@@ -18,10 +18,10 @@ import os
 from models import Recipe, RecipeIngredient, Ingredient, RecipeIngredientGroup
 from sqlalchemy import text, inspect
 from fastapi.staticfiles import StaticFiles
+from typing import Literal
+from model_manager import MODEL_MANAGER
 
 load_dotenv()
-ML_URL = os.getenv("ML_URL", "http://127.0.0.1:8080/predict/")
-
 print("✅ FastAPI загружается...")
 app = FastAPI()
 
@@ -57,7 +57,15 @@ oauth.register(
     server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
     client_kwargs={"scope": "openid email profile"},
 )
-
+MODEL_NAMES = Literal[
+    "x-ai/grok-4.1-fast:free",
+    "openrouter/bert-nebulon-alpha",
+    "google/gemini-2.0-flash-exp:free",
+    "qwen/qwen2.5-vl-32b-instruct:free",
+    "nvidia/nemotron-nano-12b-v2-vl:free",
+    "google/gemma-3-12b-it:free",
+    "mistralai/mistral-small-3.1-24b-instruct:free",
+]
 BASE_DIR = os.path.dirname(__file__)  # директория, где лежит main.py
 DROP_FILE = os.path.join(BASE_DIR, "sql", "drop.sql")
 TABLES_FILE = os.path.join(BASE_DIR, "sql", "tables.sql")
@@ -71,6 +79,7 @@ INSERT_RECIPE_INGREDIENTS_FILE = os.path.join(BASE_DIR, "sql", "insert_recipe_in
 INSERT_RECIPE_TAGS_FILE = os.path.join(BASE_DIR, "sql", "insert_recipe_tags.sql")
 INSERT_RECIPES_FILE = os.path.join(BASE_DIR, "sql", "insert_recipes.sql")
 INSERT_TAGS_FILE = os.path.join(BASE_DIR, "sql", "insert_tags.sql")
+ML_URL = os.getenv("ML_URL", "http://127.0.0.1:8080/predict/")
 
 
 def execute_sql_file(filename, conn):
@@ -159,6 +168,25 @@ def on_startup():
 @app.get("/")
 def root():
     return {"message": "Привет! API работает 🚀"}
+
+@app.post("/set-models")
+async def set_models(
+    primary: MODEL_NAMES = Query(..., description="Основная модель"),
+    fallback: MODEL_NAMES = Query(..., description="Запасная модель")
+):
+    if primary == fallback:
+        raise HTTPException(status_code=400, detail="Основная модель и запасная одна и та же?")
+    MODEL_MANAGER.set_models(primary, fallback)
+    return {"message": "Модели обновлены"}
+
+@app.post("/set-repeat")
+async def set_repeat(repeat: bool = Query(..., description="Повторять попытки при ошибках")):
+    MODEL_MANAGER.set_repeat(repeat)
+    return {"message": f"Повтор попыток: {'включен' if repeat else 'выключен'}"}
+
+@app.get("/settings")
+async def get_settings():
+    return MODEL_MANAGER.get_settings()
 
 # POST — создание пользователя
 @app.post("/users/", response_model=schemas.UserResponse)
@@ -297,12 +325,30 @@ async def upload_photo(file: UploadFile = File(...), db: Session = Depends(get_d
     # Отправляем другому сервису
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
+            usage_models = [MODEL_MANAGER.primary_model, MODEL_MANAGER.fallback_model] if MODEL_MANAGER.is_repeat else [MODEL_MANAGER.primary_model]
             files = {'file': (file.filename, image_data, file.content_type)}
-            response = await client.post(
-                ML_URL,
-                files=files
-            )
-            response.raise_for_status()
+
+            for llm_model in usage_models:
+                try:
+                    response = await client.post(
+                        ML_URL,
+                        files=files,
+                        params={'engine': "api", 'llm_model': llm_model}
+                    )
+                    response.raise_for_status()
+                    if response.status_code == 200:
+                        break
+                except httpx.HTTPError:
+                    continue
+
+            if response.status_code >= 400:
+                response = await client.post(
+                    ML_URL,
+                    files=files,
+                    params={'engine': "model", 'llm_model': usage_models[0]}
+                )
+                response.raise_for_status()
+
 
             # Получаем JSON ответ
             result = response.json()
