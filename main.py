@@ -17,6 +17,7 @@ from database import engine, get_db, Base
 import os
 from models import Recipe, RecipeIngredient, Ingredient, RecipeIngredientGroup
 from sqlalchemy import text, inspect
+from fastapi.staticfiles import StaticFiles
 
 load_dotenv()
 ML_URL = os.getenv("ML_URL", "http://127.0.0.1:8080/predict/")
@@ -26,6 +27,8 @@ app = FastAPI()
 
 # Добавляем SessionMiddleware (обязательно для OAuth)
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET", "supersecret"))
+
+app.mount("/images", StaticFiles(directory="images"), name="images")
 
 app.add_middleware(
     CORSMiddleware,
@@ -262,6 +265,8 @@ def search_recipes_by_ingredients(request: schemas.IngredientSearchRequest,
     return results
 
     #return db.query(models.Recipe).limit(limit).all()
+
+
 
 @app.get("/recipes/all", response_model=list[schemas.RecipeListResponse])
 def get_recipes(limit: int = 20, db: Session = Depends(get_db)):
