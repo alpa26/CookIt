@@ -2,7 +2,6 @@ import subprocess
 from fastapi import FastAPI, File, UploadFile, HTTPException,Query
 import httpx
 from fastapi.middleware.cors import CORSMiddleware
-from exceptions import NoIngredientsDetectedError
 from services import translate_batch
 from sqlalchemy import func
 app = FastAPI()
@@ -20,6 +19,7 @@ from sqlalchemy import text, inspect
 from fastapi.staticfiles import StaticFiles
 from typing import Literal
 from model_manager import MODEL_MANAGER
+from fastapi.responses import JSONResponse
 
 load_dotenv()
 print("✅ FastAPI загружается...")
@@ -353,17 +353,26 @@ async def upload_photo(file: UploadFile = File(...), db: Session = Depends(get_d
             # Получаем JSON ответ
             result = response.json()
             ingredients = [detection["class_name"] for detection in result["detections"]]
+            if len(ingredients) == 0:
+                return JSONResponse(
+                    status_code=200,
+                    content={
+                        "message": "Ингридиентов не обнаружено",
+                        "found_ingredients_count": 0,
+                        "ingredients": []
+                    }
+                )
 
             tr_ingredients = translate_batch(ingredients)
-
-            if not tr_ingredients:
-                raise NoIngredientsDetectedError()
-
-            return {
+            return JSONResponse(
+                status_code=200,
+                content={
                 "message": "Фото успешно обработано",
                 "found_ingredients_count": len(tr_ingredients),
                 "ingredients": tr_ingredients
             }
+            )
+
 
             """
             found_recipes = [] #find_recipes_by_ingredients_precise(tr_ingredients, db, limit=20)
@@ -384,8 +393,6 @@ async def upload_photo(file: UploadFile = File(...), db: Session = Depends(get_d
                 ]
             }
             """
-        except NoIngredientsDetectedError:
-            raise
         except httpx.TimeoutException:
             raise HTTPException(status_code=504, detail="Таймаут при обращении к внешнему сервису")
         except Exception as e:
