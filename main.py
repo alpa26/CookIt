@@ -1,25 +1,27 @@
 import subprocess
+
 from fastapi import FastAPI, File, UploadFile, HTTPException,Query
 import httpx
+import os
+import models, schemas, crud
+
 from fastapi.middleware.cors import CORSMiddleware
 from services import translate_batch
 from sqlalchemy import func
-app = FastAPI()
 from fastapi import FastAPI, Request
 from starlette.middleware.sessions import SessionMiddleware
 from authlib.integrations.starlette_client import OAuth
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
-import models, schemas, crud
 from database import engine, get_db, Base
-import os
 from models import Recipe, RecipeIngredient, Ingredient, RecipeIngredientGroup
 from sqlalchemy import text, inspect
 from fastapi.staticfiles import StaticFiles
 from typing import Literal
 from model_manager import MODEL_MANAGER
 from fastapi.responses import JSONResponse
+from pathlib import Path
 
 load_dotenv()
 print("✅ FastAPI загружается...")
@@ -80,7 +82,9 @@ INSERT_RECIPE_TAGS_FILE = os.path.join(BASE_DIR, "sql", "insert_recipe_tags.sql"
 INSERT_RECIPES_FILE = os.path.join(BASE_DIR, "sql", "insert_recipes.sql")
 INSERT_TAGS_FILE = os.path.join(BASE_DIR, "sql", "insert_tags.sql")
 ML_URL = os.getenv("ML_URL", "http://127.0.0.1:8080/predict/")
+IMAGES_DIR = Path("images/")
 
+FOLDERS = [p.name for p in IMAGES_DIR.iterdir() if p.is_dir()]
 
 def execute_sql_file(filename, conn):
     with open(filename, "r", encoding="utf-8") as f:
@@ -252,6 +256,7 @@ def search_recipes_by_ingredients(request: schemas.IngredientSearchRequest,
     query = (
         db.query(Recipe, subq.c.match_count)
         .join(subq, Recipe.id == subq.c.recipe_id)
+        .filter(func.regexp_replace(Recipe.source, '.*/([^/]+)/?$', '\\1').in_(FOLDERS))
         .order_by(subq.c.match_count.desc())
         .limit(limit)
         .all()
@@ -298,12 +303,19 @@ def search_recipes_by_ingredients(request: schemas.IngredientSearchRequest,
 
 @app.get("/recipes/all", response_model=list[schemas.RecipeListResponse])
 def get_recipes(limit: int = 20, db: Session = Depends(get_db)):
-    return db.query(models.Recipe).limit(limit).all()
+    return (db.query(models.Recipe)
+              .filter(func.regexp_replace(Recipe.source, '.*/([^/]+)/?$', '\\1').in_(FOLDERS))
+              .limit(limit).all())
 
 
 @app.get("/recipes/search/{search_word}",response_model=list[schemas.RecipeListResponse])
 def get_recepts_by_word(search_word: str, limit: int = 20, db: Session = Depends(get_db)):
-    recept = db.query(models.Recipe).filter(models.Recipe.title.ilike(f"%{search_word}%")).limit(limit).all()
+    recept = (db.query(models.Recipe)
+              .filter(
+                    models.Recipe.title.ilike(f"%{search_word}%") )
+              .filter(
+                    func.regexp_replace(Recipe.source, '.*/([^/]+)/?$', '\\1').in_(FOLDERS))
+              .limit(limit).all())
     if not recept:
         raise HTTPException(status_code=404, detail="Рецепты не найдены")
     return recept
