@@ -4,6 +4,7 @@ from fastapi import FastAPI, File, UploadFile, HTTPException,Query
 import httpx
 import os
 import models, schemas, crud
+import sqlparse
 
 from fastapi.middleware.cors import CORSMiddleware
 from services import translate_batch
@@ -87,7 +88,7 @@ IMAGES_DIR = Path("images/")
 FOLDERS = [p.name for p in IMAGES_DIR.iterdir() if p.is_dir()]
 
 def execute_sql_file(filename, conn):
-    with open(filename, "r", encoding="utf-8") as f:
+    with open(filename, "r", encoding="utf-8", errors="replace") as f:
         sql_content = f.read()
 
     statements = []
@@ -104,7 +105,7 @@ def execute_sql_file(filename, conn):
             current = []
 
     for stmt in statements:
-        stmt = stmt.replace("%", "%%")
+        #stmt = stmt.replace("%", "%%")
         conn.execute(text(stmt))
     conn.commit()
 
