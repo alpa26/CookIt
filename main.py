@@ -60,13 +60,9 @@ oauth.register(
     client_kwargs={"scope": "openid email profile"},
 )
 MODEL_NAMES = Literal[
-    "x-ai/grok-4.1-fast:free",
-    "openrouter/bert-nebulon-alpha",
-    "google/gemini-2.0-flash-exp:free",
-    "qwen/qwen2.5-vl-32b-instruct:free",
+    "amazon/nova-2-lite-v1:free",
     "nvidia/nemotron-nano-12b-v2-vl:free",
-    "google/gemma-3-12b-it:free",
-    "mistralai/mistral-small-3.1-24b-instruct:free",
+    "mistralai/mistral-small-3.1-24b-instruct:free"
 ]
 BASE_DIR = os.path.dirname(__file__)
 DROP_FILE = os.path.join(BASE_DIR, "sql", "drop.sql")
@@ -328,7 +324,7 @@ async def upload_photo(file: UploadFile = File(...), db: Session = Depends(get_d
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
-            usage_models = [MODEL_MANAGER.primary_model, MODEL_MANAGER.fallback_model] if MODEL_MANAGER.is_repeat else [MODEL_MANAGER.primary_model]
+            usage_models = [MODEL_MANAGER.primary_model]
             files = {'file': (file.filename, image_data, file.content_type)}
 
             for llm_model in usage_models:

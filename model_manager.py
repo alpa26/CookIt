@@ -7,16 +7,12 @@ class ModelManager:
 
     def __init__(self):
         self.available_models = [
-            "x-ai/grok-4.1-fast:free",
-            "openrouter/bert-nebulon-alpha",
-            "google/gemini-2.0-flash-exp:free",
-            "qwen/qwen2.5-vl-32b-instruct:free",
+            "amazon/nova-2-lite-v1:free",
             "nvidia/nemotron-nano-12b-v2-vl:free",
-            "google/gemma-3-12b-it:free",
-            "mistralai/mistral-small-3.1-24b-instruct:free",
+            "mistralai/mistral-small-3.1-24b-instruct:free"
         ]
         self.primary_model = self.available_models[0]
-        self.fallback_model = self.available_models[1]
+        self.fallback_model = self.available_models[0]
         self.is_repeat = True
 
     def __new__(cls):
