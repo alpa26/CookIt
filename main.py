@@ -5,7 +5,7 @@ import httpx
 import os
 import models, schemas, crud
 import sqlparse
-
+from typing import Optional
 from fastapi.middleware.cors import CORSMiddleware
 from services import translate_batch
 from sqlalchemy import func
@@ -23,6 +23,7 @@ from typing import Literal
 from model_manager import MODEL_MANAGER
 from fastapi.responses import JSONResponse
 from pathlib import Path
+from sqlalchemy.sql import exists, and_, select, or_
 
 load_dotenv()
 print("✅ FastAPI загружается...")
@@ -225,30 +226,67 @@ def get_cuisines(db: Session = Depends(get_db)):
 
 @app.post("/recipes/search/by-ingredients", response_model=list[schemas.RecipeListResponse])
 def search_recipes_by_ingredients(request: schemas.IngredientSearchRequest,
+                                  forbidden: Optional[schemas.IngredientSearchRequest] = None,
                                   limit: int = 20,
-                                  db: Session = Depends(get_db)):
+                                  db: Session = Depends(get_db)
+                                  ):
     ingredient_names = [i.name.strip().lower() for i in request.ingredients if i.name.strip()]
+    if forbidden is None:
+        forbidden = schemas.IngredientSearchRequest(ingredients=[])
+    forbidden_names = [i.name.strip().lower() for i in forbidden.ingredients if i.name.strip()]
+
+    search_conditions = [
+        func.lower(RecipeIngredient.name).ilike(f"%{name}%")
+        for name in ingredient_names
+    ]
 
     subq = (
         db.query(
             Recipe.id.label("recipe_id"),
-            func.count(func.distinct(Ingredient.id)).label("match_count")
+            func.count(func.distinct(RecipeIngredient.id)).label("match_count")
         )
         .join(Recipe.recipe_ingredient_groups)
-        .join(RecipeIngredient, RecipeIngredient.recipe_group_id == RecipeIngredientGroup.id)
-        .join(Ingredient, Ingredient.id == RecipeIngredient.ingredient_id)
-        .filter(
-            func.lower(Ingredient.name).in_(ingredient_names) |
-            func.lower(Ingredient.slug).in_(ingredient_names)
+        .join(
+            RecipeIngredient,
+            RecipeIngredient.recipe_group_id == RecipeIngredientGroup.id
         )
+        .filter(or_(*search_conditions))
         .group_by(Recipe.id)
         .subquery()
     )
+
+    forbidden_exists_subq = None
+
+    if forbidden_names:
+        forbidden_conditions = [
+            func.lower(RecipeIngredient.name).ilike(f"%{name}%")
+            for name in forbidden_names
+        ]
+
+        forbidden_exists_subq = (
+            db.query(RecipeIngredient.id)
+            .join(
+                RecipeIngredientGroup,
+                RecipeIngredient.recipe_group_id == RecipeIngredientGroup.id
+            )
+            .filter(
+                RecipeIngredientGroup.recipe_id == Recipe.id,
+                or_(*forbidden_conditions)
+            )
+            .exists()
+        )
 
     query = (
         db.query(Recipe, subq.c.match_count)
         .join(subq, Recipe.id == subq.c.recipe_id)
         .filter(func.regexp_replace(Recipe.source, '.*/([^/]+)/?$', '\\1').in_(FOLDERS))
+    )
+
+    if forbidden_exists_subq is not None:
+        query = query.filter(~forbidden_exists_subq)
+
+    query = (
+        query
         .order_by(subq.c.match_count.desc())
         .limit(limit)
         .all()

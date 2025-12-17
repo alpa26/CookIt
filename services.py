@@ -18,7 +18,7 @@ def normalize_ingredient(ingredient):
     """Нормализация названия ингредиента"""
     return ingredient.lower().strip()
 
-
+# Не используется
 def find_recipes_by_ingredients_precise(ingredients_list, db_session, limit=20):
 
     conditions = []
