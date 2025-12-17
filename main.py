@@ -28,16 +28,15 @@ load_dotenv()
 print("✅ FastAPI загружается...")
 app = FastAPI()
 
-# Добавляем SessionMiddleware (обязательно для OAuth)
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET", "supersecret"))
 
 app.mount("/images", StaticFiles(directory="images"), name="images")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Аналог CORS_ALLOWED_ORIGINS
-    allow_credentials=True,  # Аналог CORS_ALLOW_CREDENTIALS
-    allow_methods=["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"],  # Аналог CORS_ALLOW_METHODS
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"],
     allow_headers=[
         "accept",
         "accept-encoding",
@@ -48,10 +47,10 @@ app.add_middleware(
         "user-agent",
         "x-csrftoken",
         "x-requested-with",
-    ],  # Аналог CORS_ALLOW_HEADERS
+    ],
 )
 
-# Настраиваем OAuth
+# OAuth
 oauth = OAuth()
 oauth.register(
     name="google",
@@ -69,7 +68,7 @@ MODEL_NAMES = Literal[
     "google/gemma-3-12b-it:free",
     "mistralai/mistral-small-3.1-24b-instruct:free",
 ]
-BASE_DIR = os.path.dirname(__file__)  # директория, где лежит main.py
+BASE_DIR = os.path.dirname(__file__)
 DROP_FILE = os.path.join(BASE_DIR, "sql", "drop.sql")
 TABLES_FILE = os.path.join(BASE_DIR, "sql", "tables.sql")
 INSERT_CATEGORIES_FILE = os.path.join(BASE_DIR, "sql", "insert_categories.sql")
@@ -113,7 +112,7 @@ def execute_sql_file(filename, conn):
 def table_has_data(conn, table_name):
     """Возвращает True, если в таблице есть хотя бы одна запись"""
     result = conn.execute(text(f"SELECT EXISTS (SELECT 1 FROM {table_name} LIMIT 1)"))
-    return result.scalar()  # True/False
+    return result.scalar()
 
 
 def init_db():
@@ -124,7 +123,7 @@ def init_db():
             print("🔄 Инициализация базы запущена")
 
 
-            # Так нада
+            # иногда нада
             """
             print("💣 Очищаем схему...")
             execute_sql_file(DROP_FILE, conn)
@@ -193,14 +192,10 @@ async def set_repeat(repeat: bool = Query(..., description="Повторять �
 async def get_settings():
     return MODEL_MANAGER.get_settings()
 
-# POST — создание пользователя
 @app.post("/users/", response_model=schemas.UserResponse)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     return crud.create_user(db, user)
 
-# GET — получить всех пользователей
-
-#@app.get("/users/", response_model=list[schemas.UserResponse])
 def list_users(db: Session = Depends(get_db)):
     return crud.get_users(db)
 
@@ -243,7 +238,7 @@ def search_recipes_by_ingredients(request: schemas.IngredientSearchRequest,
             Recipe.id.label("recipe_id"),
             func.count(func.distinct(Ingredient.id)).label("match_count")
         )
-        .join(Recipe.recipe_ingredient_groups)  # Recipe → RecipeIngredientGroup
+        .join(Recipe.recipe_ingredient_groups)
         .join(RecipeIngredient, RecipeIngredient.recipe_group_id == RecipeIngredientGroup.id)
         .join(Ingredient, Ingredient.id == RecipeIngredient.ingredient_id)
         .filter(
@@ -298,10 +293,6 @@ def search_recipes_by_ingredients(request: schemas.IngredientSearchRequest,
 
     return results
 
-    #return db.query(models.Recipe).limit(limit).all()
-
-
-
 @app.get("/recipes/all", response_model=list[schemas.RecipeListResponse])
 def get_recipes(limit: int = 20, db: Session = Depends(get_db)):
     return (db.query(models.Recipe)
@@ -335,7 +326,6 @@ async def upload_photo(file: UploadFile = File(...), db: Session = Depends(get_d
 
     image_data = await file.read()
 
-    # Отправляем другому сервису
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             usage_models = [MODEL_MANAGER.primary_model, MODEL_MANAGER.fallback_model] if MODEL_MANAGER.is_repeat else [MODEL_MANAGER.primary_model]
@@ -363,7 +353,6 @@ async def upload_photo(file: UploadFile = File(...), db: Session = Depends(get_d
                 response.raise_for_status()
 
 
-            # Получаем JSON ответ
             result = response.json()
             ingredients = [detection["class_name"] for detection in result["detections"]]
             if len(ingredients) == 0:
@@ -388,7 +377,7 @@ async def upload_photo(file: UploadFile = File(...), db: Session = Depends(get_d
 
 
             """
-            found_recipes = [] #find_recipes_by_ingredients_precise(tr_ingredients, db, limit=20)
+            found_recipes = [] find_recipes_by_ingredients_precise(tr_ingredients, db, limit=20)
 
             return {
                 "message": "Фото успешно обработано",

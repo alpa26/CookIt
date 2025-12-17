@@ -20,7 +20,6 @@ class CategoryResponse(CategoryBase):
         from_attributes = True
 
 
-# Cuisine models
 class CuisineBase(BaseModel):
     name: str
     slug: str
@@ -38,7 +37,6 @@ class CuisineResponse(CuisineBase):
         from_attributes = True
 
 
-# Ingredient models
 class IngredientBase(BaseModel):
     name: str
     slug: Optional[str] = None
@@ -104,13 +102,12 @@ class RecipeBase(BaseModel):
 class RecipeCreate(RecipeBase):
     category_id: Optional[int] = None
     cuisine_id: Optional[int] = None
-    # Для обратной совместимости
-    category_name: Optional[str] = None  # Исправлено с category
-    cuisine_name: Optional[str] = None   # Исправлено с cuisine
+    category_name: Optional[str] = None
+    cuisine_name: Optional[str] = None
 
-    ingredients: List[IngredientGroupCreate] = []  # Исправлено тип
-    instructions: List[InstructionCreate] = []     # Исправлено имя поля и тип
-    tags: List[TagCreate] = []                     # Исправлено тип
+    ingredients: List[IngredientGroupCreate] = []
+    instructions: List[InstructionCreate] = []
+    tags: List[TagCreate] = []
 
 
 class RecipeUpdate(BaseModel):
@@ -128,7 +125,6 @@ class RecipeUpdate(BaseModel):
     vegan: Optional[bool] = None
 
 
-# Response models
 class IngredientResponse(IngredientBase):
     id: int
     group_id: int
@@ -139,7 +135,7 @@ class IngredientResponse(IngredientBase):
 
 class IngredientGroupResponse(IngredientGroupBase):
     #id: int
-    #ingredients: List[IngredientResponse] = []  # Исправлено с list
+    #ingredients: List[IngredientResponse] = []
 
     class Config:
         from_attributes = True
@@ -178,7 +174,7 @@ class RecipeIngredientResponse(RecipeIngredientBase):
 class RecipeTagResponse(BaseModel):
     #recipe_id: int
     #tag_id: int
-    tag: Optional["TagResponse"] = None  # Добавь связь с тегом
+    tag: Optional["TagResponse"] = None
 
     class Config:
         from_attributes = True
@@ -217,8 +213,8 @@ class RecipeResponse(RecipeBase):
 class RecipeListResponse(BaseModel):
     id: int
     title: str
-    category_name: Optional[str] = None  # Исправлено с category
-    cuisine_name: Optional[str] = None   # Исправлено с cuisine
+    category_name: Optional[str] = None
+    cuisine_name: Optional[str] = None
     poster: Optional[str] = None
     difficulty: Optional[str] = None
     cooktime: Optional[str] = None
@@ -231,7 +227,7 @@ class RecipeListResponse(BaseModel):
         from_attributes = True
 
 
-# User models
+
 class UserBase(BaseModel):
     name: str
     email: str
@@ -239,19 +235,18 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    google_id: Optional[str] = None  # Добавлено отсутствующее поле
+    google_id: Optional[str] = None
 
 
 class UserResponse(UserBase):
     id: int
-    google_id: Optional[str] = None  # Добавлено отсутствующее поле
+    google_id: Optional[str] = None
     created_at: datetime
 
     class Config:
         from_attributes = True
 
 
-# Favorite models
 class FavoriteBase(BaseModel):
     recipe_id: int
 

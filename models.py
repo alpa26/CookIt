@@ -43,12 +43,12 @@ class Recipe(Base):
     id = Column(Integer, primary_key=True, index=True)
     source = Column(Text)
     category_id = Column(Integer, ForeignKey("categories.id"))
-    category_name = Column(String(255))  # Оставляем для обратной совместимости
+    category_name = Column(String(255))
     title = Column(String(500), nullable=False)
     description = Column(Text)
     note = Column(Text)
     cuisine_id = Column(Integer, ForeignKey("cuisines.id"))
-    cuisine_name = Column(String(255))  # Оставляем для обратной совместимости
+    cuisine_name = Column(String(255))
     poster = Column(Text)
     difficulty = Column(String(100))
     cooktime = Column(String(100))
