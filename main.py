@@ -316,17 +316,31 @@ def get_recipes(
     ).all()
 
 
-@app.get("/recipes/search/{search_word}",response_model=list[schemas.RecipeListResponse])
-def get_recepts_by_word(search_word: str, limit: int = 20, db: Session = Depends(get_db)):
-    recept = (db.query(models.Recipe)
-              .filter(
-                    models.Recipe.title.ilike(f"%{search_word}%") )
-              .filter(
-                    func.regexp_replace(Recipe.source, '.*/([^/]+)/?$', '\\1').in_(FOLDERS))
-              .limit(limit).all())
-    if not recept:
+@app.get("/recipes/search/{search_word}", response_model=list[schemas.RecipeListResponse])
+def get_recipes_by_word(
+        search_word: str,
+        db: Session = Depends(get_db),
+        pagination: PaginationParams = Depends(pagination_params),
+):
+    query = (
+        db.query(models.Recipe)
+        .filter(
+            models.Recipe.title.ilike(f"%{search_word}%"))
+        .filter(
+            func.regexp_replace(Recipe.source, '.*/([^/]+)/?$', '\\1').in_(FOLDERS)
+        )
+        .order_by(models.Recipe.id)
+    )
+    recipes = apply_pagination(
+        query=query,
+        limit=pagination.limit,
+        offset=pagination.offset,
+    ).all()
+
+    if not recipes:
         raise HTTPException(status_code=404, detail="Рецепты не найдены")
-    return recept
+    return recipes
+
 
 @app.get("/recipes/{recept_id}", response_model=schemas.RecipeResponse)
 def get_recept(recept_id: int, db: Session = Depends(get_db)):
