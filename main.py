@@ -7,7 +7,9 @@ import models, schemas, crud
 import sqlparse
 
 from fastapi.middleware.cors import CORSMiddleware
-from services import translate_batch
+
+from pagination import PaginationParams, pagination_params
+from services import translate_batch, apply_pagination
 from sqlalchemy import func
 from fastapi import FastAPI, Request
 from starlette.middleware.sessions import SessionMiddleware
@@ -223,10 +225,13 @@ def get_categories(db: Session = Depends(get_db)):
 def get_cuisines(db: Session = Depends(get_db)):
     return db.query(models.Cuisine).all()
 
+
 @app.post("/recipes/search/by-ingredients", response_model=list[schemas.RecipeListResponse])
-def search_recipes_by_ingredients(request: schemas.IngredientSearchRequest,
-                                  limit: int = 20,
-                                  db: Session = Depends(get_db)):
+def search_recipes_by_ingredients(
+        request: schemas.IngredientSearchRequest,
+        db: Session = Depends(get_db),
+        pagination: PaginationParams = Depends(pagination_params),
+):
     ingredient_names = [i.name.strip().lower() for i in request.ingredients if i.name.strip()]
 
     subq = (
@@ -250,7 +255,7 @@ def search_recipes_by_ingredients(request: schemas.IngredientSearchRequest,
         .join(subq, Recipe.id == subq.c.recipe_id)
         .filter(func.regexp_replace(Recipe.source, '.*/([^/]+)/?$', '\\1').in_(FOLDERS))
         .order_by(subq.c.match_count.desc())
-        .limit(limit)
+        # .limit(limit)
         .all()
     )
 
@@ -287,13 +292,28 @@ def search_recipes_by_ingredients(request: schemas.IngredientSearchRequest,
             }
         )
 
-    return results
+    return results[pagination.offset:pagination.offset + pagination.limit + 1]
+
 
 @app.get("/recipes/all", response_model=list[schemas.RecipeListResponse])
-def get_recipes(limit: int = 20, db: Session = Depends(get_db)):
-    return (db.query(models.Recipe)
-              .filter(func.regexp_replace(Recipe.source, '.*/([^/]+)/?$', '\\1').in_(FOLDERS))
-              .limit(limit).all())
+def get_recipes(
+        db: Session = Depends(get_db),
+        pagination: PaginationParams = Depends(pagination_params),
+):
+    query = (
+        db.query(models.Recipe)
+        .filter(
+            func.regexp_replace(
+                Recipe.source, '.*/([^/]+)/?$', '\\1'
+            ).in_(FOLDERS)
+        )
+        .order_by(models.Recipe.id)
+    )
+    return apply_pagination(
+        query=query,
+        limit=pagination.limit,
+        offset=pagination.offset,
+    ).all()
 
 
 @app.get("/recipes/search/{search_word}",response_model=list[schemas.RecipeListResponse])
