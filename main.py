@@ -1,16 +1,15 @@
 import subprocess
 
-from fastapi import FastAPI, File, UploadFile, HTTPException,Query
+from fastapi import File, UploadFile, HTTPException,Query
 import httpx
 import os
 import models, schemas, crud
-import sqlparse
+
 from typing import Optional
 from fastapi.middleware.cors import CORSMiddleware
-
 from pagination import PaginationParams, pagination_params
 from services import translate_batch, apply_pagination
-from sqlalchemy import func
+from sqlalchemy import func, desc, update
 from fastapi import FastAPI, Request
 from starlette.middleware.sessions import SessionMiddleware
 from authlib.integrations.starlette_client import OAuth
@@ -513,6 +512,98 @@ def get_recipes_by_word(
         raise HTTPException(status_code=404, detail="Рецепты не найдены")
     return recipes
 
+@app.get("/recipes/by_views", response_model=list[schemas.RecipeListResponse])
+def get_recept_by_views(
+        db: Session = Depends(get_db),
+        pagination: PaginationParams = Depends(pagination_params),
+):
+    query = (
+        db.query(models.Recipe)
+        .filter(
+            func.regexp_replace(
+                Recipe.source, '.*/([^/]+)/?$', '\\1'
+            ).in_(FOLDERS)
+        )
+        .order_by(desc(models.Recipe.views))
+    )
+    return apply_pagination(
+        query=query,
+        limit=pagination.limit,
+        offset=pagination.offset,
+    ).all()
+
+@app.get("/recipes/by_likes", response_model=list[schemas.RecipeListResponse])
+def get_recept_by_likes(
+        db: Session = Depends(get_db),
+        pagination: PaginationParams = Depends(pagination_params),
+):
+    query = (
+        db.query(models.Recipe)
+        .filter(
+            func.regexp_replace(
+                Recipe.source, '.*/([^/]+)/?$', '\\1'
+            ).in_(FOLDERS)
+        )
+        .order_by(desc(models.Recipe.likes))
+    )
+    return apply_pagination(
+        query=query,
+        limit=pagination.limit,
+        offset=pagination.offset,
+    ).all()
+
+
+@app.post("/recipes/{recipe_id}/like", response_model=schemas.RecipeListResponse)
+def add_like_to_recipe(
+        recipe_id: int,
+        db: Session = Depends(get_db),
+):
+
+    stmt = (
+        update(models.Recipe)
+        .where(models.Recipe.id == recipe_id)
+        .where(
+            func.regexp_replace(
+                models.Recipe.source, '.*/([^/]+)/?$', '\\1'
+            ).in_(FOLDERS)
+        )
+        .values(likes=models.Recipe.likes + 1)
+        .returning(models.Recipe)
+    )
+
+    result = db.execute(stmt).first()
+
+    if not result:
+        raise HTTPException(status_code=404, detail="Recipe not found or not in allowed folders")
+
+    db.commit()
+    return result[0]
+
+@app.post("/recipes/{recipe_id}/view", response_model=schemas.RecipeListResponse)
+def add_view_to_recipe(
+        recipe_id: int,
+        db: Session = Depends(get_db),
+):
+
+    stmt = (
+        update(models.Recipe)
+        .where(models.Recipe.id == recipe_id)
+        .where(
+            func.regexp_replace(
+                models.Recipe.source, '.*/([^/]+)/?$', '\\1'
+            ).in_(FOLDERS)
+        )
+        .values(views=models.Recipe.views + 1)
+        .returning(models.Recipe)
+    )
+
+    result = db.execute(stmt).first()
+
+    if not result:
+        raise HTTPException(status_code=404, detail="Recipe not found or not in allowed folders")
+
+    db.commit()
+    return result[0]
 
 @app.get("/recipes/{recept_id}", response_model=schemas.RecipeResponse)
 def get_recept(recept_id: int, db: Session = Depends(get_db)):

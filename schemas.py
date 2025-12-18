@@ -199,6 +199,8 @@ class RecipeResponse(RecipeBase):
     category_name: Optional[str] = None
     cuisine_name: Optional[str] = None
     created_at: datetime
+    views: int
+    likes: int
 
     category_rel: Optional[CategoryResponse] = None
     cuisine_rel: Optional[CuisineResponse] = None
@@ -220,6 +222,8 @@ class RecipeListResponse(BaseModel):
     cooktime: Optional[str] = None
     vegan: bool = False
     created_at: datetime
+    views: int
+    likes: int
     match_count: Optional[int] = None
     matched_ingredients: Optional[list[str]] = None
 

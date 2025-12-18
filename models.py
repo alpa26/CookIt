@@ -57,6 +57,8 @@ class Recipe(Base):
     vegan = Column(Boolean, default=False)
     rec_json = Column(Text)
     created_at = Column(DateTime, default=datetime.utcnow)
+    views = Column(Integer, default=0)
+    likes = Column(Integer, default=0)
 
     favorited_by = relationship("Favorite", back_populates="recipe")
     category_rel = relationship("Category", back_populates="recipes")
