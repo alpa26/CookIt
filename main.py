@@ -1,4 +1,5 @@
 import subprocess
+from collections import defaultdict
 
 from fastapi import File, UploadFile, HTTPException,Query
 import httpx
@@ -415,37 +416,39 @@ def search_recipes_by_ingredients(
     if forbidden_exists_subq is not None:
         query = query.filter(~forbidden_exists_subq)
 
-    query = (
-        query
-        .order_by(subq.c.match_count.desc())
-        # .limit(limit)
+    recipes_with_counts = apply_pagination(
+        query=query.order_by(
+            subq.c.match_count.desc(),
+            Recipe.id.asc()
+        ),
+        offset=pagination.offset,
+        limit=pagination.limit,
+    ).all()
+
+    recipe_ids = [r.id for r, _ in recipes_with_counts]
+    matched_rows = (
+        db.query(
+            RecipeIngredientGroup.recipe_id,
+            RecipeIngredient.name
+        )
+        .join(
+            RecipeIngredientGroup,
+            RecipeIngredient.recipe_group_id == RecipeIngredientGroup.id
+        )
+        .filter(
+            RecipeIngredientGroup.recipe_id.in_(recipe_ids),
+            or_(*search_conditions)
+        )
+        .distinct()
         .all()
     )
 
+    matched_by_recipe = defaultdict(list)
+    for recipe_id, name in matched_rows:
+        matched_by_recipe[recipe_id].append(name)
+
     results = []
-
-    for r, match_count in query:
-        matched_ingredients = (
-            db.query(RecipeIngredient.name)
-            .select_from(RecipeIngredient)
-            .join(
-                RecipeIngredientGroup,
-                RecipeIngredient.recipe_group_id == RecipeIngredientGroup.id
-            )
-            .join(
-                Recipe,
-                RecipeIngredientGroup.recipe_id == Recipe.id
-            )
-            .filter(
-                RecipeIngredientGroup.recipe_id == r.id,
-                or_(*search_conditions)
-            )
-            .distinct()
-            .all()
-        )
-
-        matched_list = [i[0] for i in matched_ingredients]
-
+    for r, match_count in recipes_with_counts:
         results.append(
             {
                 "id": r.id,
@@ -458,12 +461,12 @@ def search_recipes_by_ingredients(
                 "vegan": r.vegan,
                 "created_at": r.created_at,
                 "match_count": match_count,
-                "matched_ingredients": matched_list
+                "matched_ingredients": matched_by_recipe.get(r.id, []),
+                "views": r.views,
+                "likes": r.likes,
             }
         )
-    results.sort(key=lambda x: len(x["matched_ingredients"]), reverse=True)
-
-    return results[pagination.offset:pagination.offset + pagination.limit + 1]
+    return results
 
 
 @app.get("/recipes/all", response_model=list[schemas.RecipeListResponse])
