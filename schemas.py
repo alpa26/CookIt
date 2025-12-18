@@ -127,7 +127,7 @@ class RecipeUpdate(BaseModel):
 
 class IngredientResponse(IngredientBase):
     id: int
-    group_id: int
+    # group_id: int
 
     class Config:
         from_attributes = True

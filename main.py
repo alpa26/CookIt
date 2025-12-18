@@ -27,9 +27,12 @@ from fastapi.responses import JSONResponse
 from pathlib import Path
 from sqlalchemy.sql import exists, and_, select, or_
 
+from routes.ingredients import router as ingredients_routes
+
 load_dotenv()
 print("✅ FastAPI загружается...")
 app = FastAPI()
+app.include_router(ingredients_routes)
 
 app.add_middleware(SessionMiddleware, secret_key=os.getenv("SESSION_SECRET", "supersecret"))
 
