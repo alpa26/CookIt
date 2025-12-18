@@ -48,6 +48,8 @@ CREATE TABLE IF NOT EXISTS recipes (
     cooktime TEXT,
     preparetime TEXT,
     video TEXT,
+    views INTEGER,
+    likes INTEGER,
     vegan BOOLEAN,
     rec_create_user TEXT,
     rec_json JSONB,

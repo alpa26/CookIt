@@ -562,11 +562,6 @@ def add_like_to_recipe(
     stmt = (
         update(models.Recipe)
         .where(models.Recipe.id == recipe_id)
-        .where(
-            func.regexp_replace(
-                models.Recipe.source, '.*/([^/]+)/?$', '\\1'
-            ).in_(FOLDERS)
-        )
         .values(likes=models.Recipe.likes + 1)
         .returning(models.Recipe)
     )
@@ -588,11 +583,6 @@ def add_view_to_recipe(
     stmt = (
         update(models.Recipe)
         .where(models.Recipe.id == recipe_id)
-        .where(
-            func.regexp_replace(
-                models.Recipe.source, '.*/([^/]+)/?$', '\\1'
-            ).in_(FOLDERS)
-        )
         .values(views=models.Recipe.views + 1)
         .returning(models.Recipe)
     )
