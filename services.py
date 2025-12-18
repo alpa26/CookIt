@@ -1,7 +1,15 @@
 from deep_translator import GoogleTranslator
 from sqlalchemy import or_
+from sqlalchemy.orm import Query
 import re
 
+
+def apply_pagination(
+        query: Query,
+        limit: int,
+        offset: int,
+):
+    return query.offset(offset).limit(limit)
 
 
 def translate_batch(word_list):
