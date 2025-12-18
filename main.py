@@ -7,7 +7,9 @@ import models, schemas, crud
 import sqlparse
 from typing import Optional
 from fastapi.middleware.cors import CORSMiddleware
-from services import translate_batch
+
+from pagination import PaginationParams, pagination_params
+from services import translate_batch, apply_pagination
 from sqlalchemy import func
 from fastapi import FastAPI, Request
 from starlette.middleware.sessions import SessionMiddleware
@@ -339,12 +341,14 @@ def get_categories(db: Session = Depends(get_db)):
 def get_cuisines(db: Session = Depends(get_db)):
     return db.query(models.Cuisine).all()
 
+
 @app.post("/recipes/search/by-ingredients", response_model=list[schemas.RecipeListResponse])
-def search_recipes_by_ingredients(request: schemas.IngredientSearchRequest,
-                                  forbidden: Optional[schemas.IngredientSearchRequest] = None,
-                                  limit: int = 20,
-                                  db: Session = Depends(get_db)
-                                  ):
+def search_recipes_by_ingredients(
+        request: schemas.IngredientSearchRequest,
+        forbidden: Optional[schemas.IngredientSearchRequest] = None,
+        db: Session = Depends(get_db),
+        pagination: PaginationParams = Depends(pagination_params),
+):
     ingredient_names = [i.name.strip().lower() for i in request.ingredients if i.name.strip()]
     if forbidden is None:
         forbidden = schemas.IngredientSearchRequest(ingredients=[])
@@ -403,7 +407,7 @@ def search_recipes_by_ingredients(request: schemas.IngredientSearchRequest,
     query = (
         query
         .order_by(subq.c.match_count.desc())
-        .limit(limit)
+        # .limit(limit)
         .all()
     )
 
@@ -440,26 +444,55 @@ def search_recipes_by_ingredients(request: schemas.IngredientSearchRequest,
             }
         )
 
-    return results
+    return results[pagination.offset:pagination.offset + pagination.limit + 1]
+
 
 @app.get("/recipes/all", response_model=list[schemas.RecipeListResponse])
-def get_recipes(limit: int = 20, db: Session = Depends(get_db)):
-    return (db.query(models.Recipe)
-              .filter(func.regexp_replace(Recipe.source, '.*/([^/]+)/?$', '\\1').in_(FOLDERS))
-              .limit(limit).all())
+def get_recipes(
+        db: Session = Depends(get_db),
+        pagination: PaginationParams = Depends(pagination_params),
+):
+    query = (
+        db.query(models.Recipe)
+        .filter(
+            func.regexp_replace(
+                Recipe.source, '.*/([^/]+)/?$', '\\1'
+            ).in_(FOLDERS)
+        )
+        .order_by(models.Recipe.id)
+    )
+    return apply_pagination(
+        query=query,
+        limit=pagination.limit,
+        offset=pagination.offset,
+    ).all()
 
 
-@app.get("/recipes/search/{search_word}",response_model=list[schemas.RecipeListResponse])
-def get_recepts_by_word(search_word: str, limit: int = 20, db: Session = Depends(get_db)):
-    recept = (db.query(models.Recipe)
-              .filter(
-                    models.Recipe.title.ilike(f"%{search_word}%") )
-              .filter(
-                    func.regexp_replace(Recipe.source, '.*/([^/]+)/?$', '\\1').in_(FOLDERS))
-              .limit(limit).all())
-    if not recept:
+@app.get("/recipes/search/{search_word}", response_model=list[schemas.RecipeListResponse])
+def get_recipes_by_word(
+        search_word: str,
+        db: Session = Depends(get_db),
+        pagination: PaginationParams = Depends(pagination_params),
+):
+    query = (
+        db.query(models.Recipe)
+        .filter(
+            models.Recipe.title.ilike(f"%{search_word}%"))
+        .filter(
+            func.regexp_replace(Recipe.source, '.*/([^/]+)/?$', '\\1').in_(FOLDERS)
+        )
+        .order_by(models.Recipe.id)
+    )
+    recipes = apply_pagination(
+        query=query,
+        limit=pagination.limit,
+        offset=pagination.offset,
+    ).all()
+
+    if not recipes:
         raise HTTPException(status_code=404, detail="Рецепты не найдены")
-    return recept
+    return recipes
+
 
 @app.get("/recipes/{recept_id}", response_model=schemas.RecipeResponse)
 def get_recept(recept_id: int, db: Session = Depends(get_db)):
