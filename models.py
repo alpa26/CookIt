@@ -85,14 +85,14 @@ class Ingredient(Base):
     __tablename__ = "ingredients"
 
     id = Column(Integer, primary_key=True, index=True)
-    group_id = Column(Integer, ForeignKey("ingredient_groups.id", ondelete="CASCADE"))
+    # group_id = Column(Integer, ForeignKey("ingredient_groups.id", ondelete="CASCADE"))
     name = Column(String(255), nullable=False)
     slug = Column(String(255))
-    notes = Column(Text)
-    value = Column(String(100))
-    type = Column(String(100))
-    amount = Column(String(100))
-    sort_order = Column(Integer)
+    # notes = Column(Text)
+    # value = Column(String(100))
+    # type = Column(String(100))
+    # amount = Column(String(100))
+    # sort_order = Column(Integer)
 
 class Instruction(Base):
     __tablename__ = "instructions"
