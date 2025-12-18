@@ -87,7 +87,7 @@ ML_URL = os.getenv("ML_URL", "http://127.0.0.1:8080/predict/")
 IMAGES_DIR = Path("images/")
 
 FOLDERS = [p.name for p in IMAGES_DIR.iterdir() if p.is_dir()]
-
+'''
 BASE_INGREDIENTS = [
     'вода', 'вода газированная', 'вода минеральная', 'теплая вода',
     'холодная вода', 'вода минеральная с газом', 'вода минеральная без газа',
@@ -202,6 +202,7 @@ BASE_INGREDIENTS = [
     'желатин', 'желатин быстрорастворимый', 'желатин листовой',
     'агар-агар',
 ]
+'''
 
 def execute_sql_file(filename, conn):
     with open(filename, "r", encoding="utf-8", errors="replace") as f:
@@ -353,15 +354,23 @@ def search_recipes_by_ingredients(
         pagination: PaginationParams = Depends(pagination_params),
 ):
     ingredient_names = [i.name.strip().lower() for i in request.ingredients if i.name.strip()]
+
+    #ingredient_names_all = ingredient_names+BASE_INGREDIENTS
+
     if forbidden is None:
         forbidden = schemas.IngredientSearchRequest(ingredients=[])
     forbidden_names = [i.name.strip().lower() for i in forbidden.ingredients if i.name.strip()]
 
     search_conditions = [
-        func.lower(RecipeIngredient.name).ilike(f"%{name}%")
+        func.lower(RecipeIngredient.name).ilike(f"%{name[:-1]}%")
         for name in ingredient_names
     ]
-
+    '''
+    search_conditions_all = [
+        func.lower(RecipeIngredient.name).ilike(f"%{name[:-1]}%")
+        for name in ingredient_names_all
+    ]
+    '''
     subq = (
         db.query(
             Recipe.id.label("recipe_id"),
@@ -418,12 +427,19 @@ def search_recipes_by_ingredients(
 
     for r, match_count in query:
         matched_ingredients = (
-            db.query(Ingredient.name)
-            .join(RecipeIngredient, Ingredient.id == RecipeIngredient.ingredient_id)
-            .join(RecipeIngredientGroup, RecipeIngredient.recipe_group_id == RecipeIngredientGroup.id)
+            db.query(RecipeIngredient.name)
+            .select_from(RecipeIngredient)
+            .join(
+                RecipeIngredientGroup,
+                RecipeIngredient.recipe_group_id == RecipeIngredientGroup.id
+            )
+            .join(
+                Recipe,
+                RecipeIngredientGroup.recipe_id == Recipe.id
+            )
             .filter(
                 RecipeIngredientGroup.recipe_id == r.id,
-                func.lower(Ingredient.name).in_(ingredient_names)
+                or_(*search_conditions)
             )
             .distinct()
             .all()
@@ -446,6 +462,7 @@ def search_recipes_by_ingredients(
                 "matched_ingredients": matched_list
             }
         )
+    results.sort(key=lambda x: len(x["matched_ingredients"]), reverse=True)
 
     return results[pagination.offset:pagination.offset + pagination.limit + 1]
 
